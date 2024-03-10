@@ -1,17 +1,16 @@
 import express from "express";
 
 export interface RoutingDependencies {
-  usersRouting: express.Router;
+  productRouting: express.Router;
   // ROUTES_INTERFACE
 }
 
 export const createRouter = ({
-  usersRouting,
+  productRouting,
   // ROUTES_DEPENDENCIES
 }: RoutingDependencies) => {
   const router = express.Router();
-
-  router.use("/example", usersRouting);
+  router.use("/products", productRouting);
   // ROUTES_CONFIG
   return router;
 };

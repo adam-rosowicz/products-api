@@ -1,6 +1,9 @@
 import { MongoClient } from "mongodb";
 import { MongoDbConfig } from "../../config/db";
 
+export type MongoCollection = Awaited<
+  ReturnType<typeof MongoDbClient.prototype.getCollection>
+>;
 export interface MongoDBClientDependencies {
   mongoDbConfig: MongoDbConfig;
 }
@@ -16,7 +19,7 @@ export class MongoDbClient {
     await this.client.connect();
   }
 
-  public async getClient(collectionName: string) {
+  public async getCollection(collectionName: string) {
     await this.init();
 
     return this.client.db().collection(collectionName);
