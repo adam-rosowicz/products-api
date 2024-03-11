@@ -21,7 +21,6 @@ services:
     volumes: *volumes
     depends_on:
       - mongo-express
-      - mongo
   
   mongo-express:
     image: mongo-express

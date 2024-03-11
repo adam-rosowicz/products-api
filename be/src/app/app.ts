@@ -1,62 +1,28 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import { expressMiddleware } from "@apollo/server/express4";
-import http from "http";
 import { CommandBus } from "@tshio/command-bus";
-import { QueryBus } from "@tshio/query-bus";
-import swaggerUi from "swagger-ui-express";
-import YAML from "yamljs";
 import { StatusCodes } from "http-status-codes";
-import pkg from "body-parser";
 import { MiddlewareType } from "../shared/middleware-type/middleware.type";
 import { NotFoundError } from "../errors/not-found.error";
-import { multiFileSwagger } from "../tools/multi-file-swagger";
-import { AppConfig } from "../config/app";
+import { AddProductCommand } from "./features/product/commands/add-product.command";
+import { products } from "../shared/utils/products";
+import { loadEnvs } from "../config/env";
 
 export interface AppDependencies {
   router: express.Router;
   errorHandler: MiddlewareType;
-  graphQLSchema: string;
+  authorization: MiddlewareType;
   commandBus: CommandBus;
-  queryBus: QueryBus<any>;
-  resolvers: any;
-  appConfig: AppConfig;
 }
 
 async function createApp({
   router,
   errorHandler,
-  graphQLSchema,
+  authorization,
   commandBus,
-  queryBus,
-  resolvers,
-  appConfig,
 }: AppDependencies) {
-  const typeDefs = graphQLSchema;
-
   const app = express();
-  const httpServer = http.createServer(app);
-  const apolloServer = new ApolloServer({
-    typeDefs,
-    resolvers,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-  });
-  await apolloServer.start();
-
-  const { json } = pkg;
-
-  app.use(
-    "/graphql",
-    cors<cors.CorsRequest>(),
-    json(),
-    expressMiddleware(apolloServer, {
-      context: async () => ({
-        commandBus,
-        queryBus,
-      }),
-    }),
-  );
 
   app.use(cors());
   app.use(
@@ -66,7 +32,7 @@ async function createApp({
           scriptSrc: ["'self'", "https: 'unsafe-inline'"],
         },
       },
-    }),
+    })
   );
 
   app.use(express.json());
@@ -74,13 +40,16 @@ async function createApp({
   app.get("/health", (req, res) => {
     res.status(StatusCodes.OK).json({
       status: "ok",
-      deployedCommit: appConfig.deployedCommit,
     });
   });
 
-  const swaggerDocument = await multiFileSwagger(YAML.load("../swagger/api.yaml"));
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-  app.use("/api", router);
+  await Promise.all(
+    products.map(async (product) => {
+      await commandBus.execute(new AddProductCommand({ product }));
+    })
+  );
+
+  app.use("/api", [authorization], router);
   app.use("*", (req, res, next) => next(new NotFoundError("Page not found")));
   app.use(errorHandler);
 
