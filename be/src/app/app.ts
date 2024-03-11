@@ -7,16 +7,19 @@ import { MiddlewareType } from "../shared/middleware-type/middleware.type";
 import { NotFoundError } from "../errors/not-found.error";
 import { AddProductCommand } from "./features/product/commands/add-product.command";
 import { products } from "../shared/utils/products";
+import { loadEnvs } from "../config/env";
 
 export interface AppDependencies {
   router: express.Router;
   errorHandler: MiddlewareType;
+  authorization: MiddlewareType;
   commandBus: CommandBus;
 }
 
 async function createApp({
   router,
   errorHandler,
+  authorization,
   commandBus,
 }: AppDependencies) {
   const app = express();
@@ -46,7 +49,7 @@ async function createApp({
     })
   );
 
-  app.use("/api", router);
+  app.use("/api", [authorization], router);
   app.use("*", (req, res, next) => next(new NotFoundError("Page not found")));
   app.use(errorHandler);
 
